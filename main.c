@@ -2,7 +2,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define MAX_LINE     500
 #define MAX_COMMANDS  10
@@ -26,7 +30,7 @@ int main(void){
   char **tmpArgArray;
   Commands **cmd = NULL;
   Commands **tmpCmd;
-  int cntCom, cnt1, cntArg, cnt2;
+  int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue;
 
   /* read input line, string must be 501 because of last
      null or \n entry, not sure about this point */
@@ -77,7 +81,7 @@ int main(void){
     token = strtok(tmpArg, " ");
     if(token != NULL){
       cmd[cnt1]->command = token;
-      printf("%s\t",cmd[cnt1]->command);
+      /*printf("%s\t",cmd[cnt1]->command);*/
       /* create new argument array and copy from old */
       token = strtok(NULL, " ");
       /*cmd[cnt1]->args = token;*/
@@ -87,7 +91,7 @@ int main(void){
         if(cntArg == 0){
           cmd[cnt1]->argsArray = tmpArgArray;
           cmd[cnt1]->argsArray[cntArg] = token;
-          printf("%s\n",cmd[cnt1]->argsArray[cntArg]);
+          /*printf("%s\n",cmd[cnt1]->argsArray[cntArg]);*/
         }else{
           for(cnt2=0; cnt2<cntArg; cnt2++){
             tmpArgArray[cnt2] = cmd[cnt1]->argsArray[cnt2];
@@ -99,10 +103,40 @@ int main(void){
         token = strtok(NULL, " ");
       }
     }
+
     if(strlen(cmd[cnt1]->command) > 21){
       perror("error: command to long");
       return 1;
     }
+  }
+
+  for(i = 0; i < cntCom; i++){
+    printf("%s\n", cmd[i]->command);
+    childPid = fork();
+
+    if(childPid < 0){
+      printf("Fork of %s failed", cmd[i]->command);
+    }else if(childPid == 0){
+      cmd[i]->pid = getpid();
+      /* exitValue is not 0 if the command can not be executed */
+      exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
+      exit(exitValue);
+    }else{
+      /* Parent process */
+      printf("Process pid %d\n", getpid());
+    }
+  }
+  
+  /* wait for all children */
+  while((pid = waitpid(-1, &status,0))){
+    if(errno == ECHILD){
+      break;
+    }
+    /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
+  }
+
+  for(i = 0; i < cntCom; i++){
+    printf("%s : PID: %d\n",cmd[i]->command,  cmd[i]->pid);
   }
 
   return 0;
