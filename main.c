@@ -12,8 +12,8 @@
 typedef struct commands{
   int pid;
   char *command;
-  /*char **args;*/
   char *args;
+  char **argsArray;
   int beginTime;
   int endTime;
 }Commands;
@@ -26,10 +26,10 @@ int main(void){
   char inputStr[MAX_LINE];
   char *token = NULL;
   char *tmpArg;
-  /*char **tmpArgArray;*/
+  char **tmpArgArray;
   Commands **cmd;
   Commands **tmpCmd;
-  int cntCom, cnt1; /*cntArg, cnt2;*/
+  int cntCom, cnt1, cntArg, cnt2;
 
   /* read input line, string must be 501 because of last
      null or \n entry, not sure about this point */
@@ -79,22 +79,22 @@ int main(void){
       /* create new argument array and copy from old */
       token = strtok(NULL, " ");
       cmd[cnt1]->args = token;
-      /*cntArg = 0;
+      cntArg = 0;
       while(token != NULL){
         tmpArgArray = (char **)malloc(sizeof(char *)*(cntArg+1));
         if(cntArg == 0){
-          cmd[cnt1]->args = tmpArgArray;
-          cmd[cnt1]->args[cntArg] = token;
+          cmd[cnt1]->argsArray = tmpArgArray;
+          cmd[cnt1]->argsArray[cntArg] = token;
         }else{
           for(cnt2=0; cnt2<cntArg; cnt2++){
-            tmpArgArray[cnt2] = cmd[cnt1]->args[cnt2];
+            tmpArgArray[cnt2] = cmd[cnt1]->argsArray[cnt2];
           }
           tmpArgArray[cntArg] = token;
-          cmd[cnt1]->args = tmpArgArray;
+          cmd[cnt1]->argsArray = tmpArgArray;
         }
         cntArg++;
         token = strtok(NULL, " ");
-      }*/
+      }
     }
     if(strlen(cmd[cnt1]->command) > 21){
       perror("error: command to long");
