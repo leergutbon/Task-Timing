@@ -19,9 +19,6 @@ typedef struct commands{
 }Commands;
 
 
-
-Commands **newCommandEntry(int numCmd, Commands **cmd);
-
 int main(void){
   char inputStr[MAX_LINE];
   char *token = NULL;
@@ -52,7 +49,11 @@ int main(void){
       tmpCmd = (Commands **)malloc(sizeof(Commands)*(cntCom+1));
       cnt1 = 0;
       while(cnt1 < cntCom+1){
-        tmpCmd[cnt1] = cmd[cnt1];
+        if(cmd[cnt1] != NULL){
+          tmpCmd[cnt1] = cmd[cnt1];
+        }else{
+          cmd = tmpCmd;
+        }
         cnt1++;
       }
       cmd = tmpCmd;
@@ -76,7 +77,7 @@ int main(void){
     token = strtok(tmpArg, " ");
     if(token != NULL){
       cmd[cnt1]->command = token;
-      /*printf("%s\t",cmd[cnt1]->command);*/
+      printf("%s\t",cmd[cnt1]->command);
       /* create new argument array and copy from old */
       token = strtok(NULL, " ");
       /*cmd[cnt1]->args = token;*/
@@ -86,7 +87,7 @@ int main(void){
         if(cntArg == 0){
           cmd[cnt1]->argsArray = tmpArgArray;
           cmd[cnt1]->argsArray[cntArg] = token;
-          /*printf("%s\n",cmd[cnt1]->argsArray[cntArg]);*/
+          printf("%s\n",cmd[cnt1]->argsArray[cntArg]);
         }else{
           for(cnt2=0; cnt2<cntArg; cnt2++){
             tmpArgArray[cnt2] = cmd[cnt1]->argsArray[cnt2];
