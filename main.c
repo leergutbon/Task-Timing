@@ -31,6 +31,8 @@ int main(void){
   Commands **cmd = NULL;
   Commands **tmpCmd;
   int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue;
+  int pipefd[2];
+  pipe(pipefd);
 
   while(1){
     /* read input line, string must be 501 because of last
@@ -118,6 +120,11 @@ int main(void){
       if(childPid < 0){
         printf("Fork of %s failed", cmd[i]->command);
       }else if(childPid == 0){
+        close(pipefd[0]);    /* close reading end in the child */
+
+        dup2(pipefd[1], 1);  /* send stdout to the pipe */
+
+        close(pipefd[1]);
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
         exit(exitValue);
