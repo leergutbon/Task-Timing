@@ -24,7 +24,7 @@ int main(void){
   char *token = NULL;
   char *tmpArg;
   char **tmpArgArray;
-  Commands **cmd;
+  Commands **cmd = NULL;
   Commands **tmpCmd;
   int cntCom, cnt1, cntArg, cnt2;
 
@@ -49,7 +49,7 @@ int main(void){
       tmpCmd = (Commands **)malloc(sizeof(Commands)*(cntCom+1));
       cnt1 = 0;
       while(cnt1 < cntCom+1){
-        if(cmd[cnt1] != NULL){
+        if(cmd != NULL){
           tmpCmd[cnt1] = cmd[cnt1];
         }else{
           cmd = tmpCmd;

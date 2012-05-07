@@ -13,3 +13,5 @@ prog: main.c
 clean:
 		rm main
 
+debug:
+		gdb main
