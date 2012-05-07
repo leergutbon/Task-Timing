@@ -12,7 +12,7 @@
 typedef struct commands{
   int pid;
   char *command;
-  char *args;
+  /*char *args;*/
   char **argsArray;
   int beginTime;
   int endTime;
@@ -76,15 +76,17 @@ int main(void){
     token = strtok(tmpArg, " ");
     if(token != NULL){
       cmd[cnt1]->command = token;
+      /*printf("%s\t",cmd[cnt1]->command);*/
       /* create new argument array and copy from old */
       token = strtok(NULL, " ");
-      cmd[cnt1]->args = token;
+      /*cmd[cnt1]->args = token;*/
       cntArg = 0;
       while(token != NULL){
         tmpArgArray = (char **)malloc(sizeof(char *)*(cntArg+1));
         if(cntArg == 0){
           cmd[cnt1]->argsArray = tmpArgArray;
           cmd[cnt1]->argsArray[cntArg] = token;
+          /*printf("%s\n",cmd[cnt1]->argsArray[cntArg]);*/
         }else{
           for(cnt2=0; cnt2<cntArg; cnt2++){
             tmpArgArray[cnt2] = cmd[cnt1]->argsArray[cnt2];
