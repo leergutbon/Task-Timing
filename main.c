@@ -31,6 +31,9 @@ int main(void){
   Commands **cmd = NULL;
   Commands **tmpCmd;
   int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue;
+  int pipes[2];
+  char writebuf[sizeof(int)]={0};
+  char readbuf[sizeof(int)]={0};
 
   /* read input line, string must be 501 because of last
      null or \n entry, not sure about this point */
@@ -41,6 +44,12 @@ int main(void){
   }
   if(strlen(inputStr) > 501){
     perror("error: input string to long\n");
+    return 1;
+  }
+
+  /* init pipe */
+  if(pipe(pipes)<0){
+    perror("Pipe allocation failed");
     return 1;
   }
 
@@ -117,13 +126,15 @@ int main(void){
     if(childPid < 0){
       printf("Fork of %s failed", cmd[i]->command);
     }else if(childPid == 0){
-      cmd[i]->pid = getpid();
+      sprintf(writebuf, "%d", getpid());
       /* exitValue is not 0 if the command can not be executed */
       exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
       exit(exitValue);
     }else{
+      cmd[i]->pid = childPid;
       /* Parent process */
       printf("Process pid %d\n", getpid());
+      printf("Process pid %d\n", cmd[i]->pid);
     }
   }
   
@@ -136,6 +147,7 @@ int main(void){
   }
 
   for(i = 0; i < cntCom; i++){
+    
     printf("%s : PID: %d\n",cmd[i]->command,  cmd[i]->pid);
   }
 
