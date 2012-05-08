@@ -1,14 +1,13 @@
-/*--- main.c ---*/
-
+/*--- hu1.c ----------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <sys/times.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <time.h>
-#include <sys/time.h>
 
 #define MAX_LINE     500
 #define MAX_COMMANDS  10
@@ -20,8 +19,10 @@ typedef struct commands{
   char *command;
   /*char *args;*/
   char **argsArray;
-  clock_t beginTime;
-  clock_t endTime;
+  clock_t st_time;
+  clock_t en_time;
+  struct tms st_cpu;
+  struct tms en_cpu;
 }Commands;
 
 
@@ -129,7 +130,8 @@ int main(void){
 
         close(pipefd[1]);
         /* begin time measure */
-        cmd[i]->beginTime = times(NULL);
+        cmd[i]->st_time = times(&cmd[i]->st_cpu);
+
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
         exit(exitValue);
@@ -145,7 +147,7 @@ int main(void){
       for(i=0; i<cntCom; i++){
         /* end time measure */
         if(cmd[i]->pid == (int)pid){
-          cmd[i]->endTime = times(NULL);
+          cmd[i]->en_time = times(&cmd[i]->en_cpu);
         }
       }
       if(errno == ECHILD){
@@ -155,7 +157,7 @@ int main(void){
     }
 
     for(i = 0; i < cntCom; i++){
-      printf("%s\tPID: %d\tTime: %f\n",cmd[i]->command,  cmd[i]->pid, (difftime(cmd[i]->endTime, cmd[i]->beginTime)));
+      printf("%s\tPID: %d\tTime: %f\n",cmd[i]->command,  cmd[i]->pid, (double)(cmd[i]->en_time - cmd[i]->st_time));
     }
   }
 
