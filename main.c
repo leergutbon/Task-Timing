@@ -43,6 +43,8 @@ int main(void){
 
   /* SIGINT init, need for interrupt programm */
   signal(SIGINT, signal_callback_handler);
+  /* get ticks per second */
+  sysconf(_SC_CLK_TCK);
 
   while(1){
     /* set cmd to NULL for next loop pass */
@@ -145,6 +147,7 @@ int main(void){
       }
     }
 
+    /* execute each proces */
     for(i = 0; i < cntCom; i++){
       /*printf("%s\n", cmd[i]->command);*/
       childPid = fork();
@@ -157,7 +160,7 @@ int main(void){
         close(pipefd[1]);
 
         /* begin time measure */
-        /*cmd[i]->st_time = times(&cmd[i]->st_cpu);*/
+        times(&cmd[i]->st_cpu);
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->args);
         exit(exitValue);
@@ -173,6 +176,7 @@ int main(void){
       for(i = 0; i < cntCom; i++){
         if(cmd[i]->pid == (int) pid){
           cmd[i]->exitStatus = WEXITSTATUS(status);
+          times(&cmd[i]->en_cpu);
           break;
         }
       }
@@ -183,11 +187,12 @@ int main(void){
       /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
     }
 
+    j = 0;
     for(i = 0; i < cntCom; i++){
       if (cmd[i]->exitStatus != 0){
         printf("%s: [execution error]\n", cmd[i]->command);
       }else{
-        printf("%s: user time = TIME\n", cmd[i]->command);
+        printf("%s: user time = %f\n", cmd[i]->command, (double)(cmd[i]->en_cpu.tms_cutime - cmd[i]->st_cpu.tms_cutime));
       }
     }
     printf("sum of user times = TIME\n");
