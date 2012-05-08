@@ -125,14 +125,10 @@ int main(void){
         printf("Fork of %s failed", cmd[i]->command);
       }else if(childPid == 0){
         close(pipefd[0]);    /* close reading end in the child */
-
         dup2(pipefd[1], 1);  /* send stdout to the pipe */
-
         close(pipefd[1]);
         /* begin time measure */
-        cmd[i]->st_time = times(&cmd[i]->st_cpu);
-printf("start: %d\t", (int)(cmd[i]->st_cpu.tms_cutime));
-
+        /*cmd[i]->st_time = times(&cmd[i]->st_cpu);*/
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
         exit(exitValue);
@@ -147,12 +143,13 @@ printf("start: %d\t", (int)(cmd[i]->st_cpu.tms_cutime));
     while((pid = waitpid(-1, &status,0))){
       for(i=0; i<cntCom; i++){
         /* end time measure */
-        if(cmd[i]->pid == (int)pid){
+        /*if(cmd[i]->pid == (int)pid){
           cmd[i]->en_time = times(&cmd[i]->en_cpu);
-printf("end: %d\n", (int)(cmd[i]->en_cpu.tms_cutime));
+printf("start: %d\t", (int)(cmd[i]->st_cpu.tms_utime));
+printf("end: %d\n", (int)(cmd[i]->en_cpu.tms_utime));
           break;
         }
-      }
+      }*/
       if(errno == ECHILD){
         break;
       }
@@ -160,7 +157,7 @@ printf("end: %d\n", (int)(cmd[i]->en_cpu.tms_cutime));
     }
 
     for(i = 0; i < cntCom; i++){
-      /*printf("%s\tPID:%d\tTime:%d\n",cmd[i]->command,  cmd[i]->pid, (int)(cmd[i]->en_time - cmd[i]->st_time));*/
+      /*printf("%s\tPID:%d\tTime:%d\n",cmd[i]->command,  cmd[i]->pid, (int)(cmd[i]->en_cpu.tms_cutime - cmd[i]->st_cpu.tms_cutime));*/
     }
   }
 
