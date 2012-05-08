@@ -20,6 +20,7 @@ typedef struct commands{
   char **argsArray;
   int beginTime;
   int endTime;
+  int exitStatus;
 }Commands;
 
 
@@ -30,7 +31,7 @@ int main(void){
   char **tmpArgArray;
   Commands **cmd = NULL;
   Commands **tmpCmd;
-  int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue;
+  int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue, x;
   int pipefd[2];
   pipe(pipefd);
 
@@ -138,6 +139,13 @@ int main(void){
     
     /* wait for all children */
     while((pid = waitpid(-1, &status,0))){
+      for(x = 0; x < cntCom; x++){
+        if(cmd[x]->pid == (int) pid){
+          cmd[x]->exitStatus = WEXITSTATUS(status);
+          break;
+        }
+      }
+
       if(errno == ECHILD){
         break;
       }
@@ -145,9 +153,13 @@ int main(void){
     }
 
     for(i = 0; i < cntCom; i++){
-      
-      printf("%s : PID: %d\n",cmd[i]->command,  cmd[i]->pid);
+      if (cmd[i]->exitStatus != 0){
+        printf("%s: [execution error]\n", cmd[i]->command);
+      }else{
+        printf("%s: user time = TIME\n", cmd[i]->command);
+      }
     }
+    printf("sum of user times = TIME\n");
   }
 
   return 0;
