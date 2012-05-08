@@ -141,7 +141,7 @@ int main(void){
     
     /* wait for all children */
     while((pid = waitpid(-1, &status,0))){
-      for(i=0; i<cntCom; i++){
+      /*for(i=0; i<cntCom; i++){*/
         /* end time measure */
         /*if(cmd[i]->pid == (int)pid){
           cmd[i]->en_time = times(&cmd[i]->en_cpu);
