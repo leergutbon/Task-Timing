@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
+#include <signal.h>
 #include <sys/times.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -24,6 +24,12 @@ typedef struct commands{
   int exitStatus;
 }Commands;
 
+/* signal handler */
+void signal_callback_handler(int signum){
+  printf("\nCaught signal %d\n",signum);
+  exit(signum);
+}
+
 
 int main(void){
   char inputStr[MAX_LINE];
@@ -34,6 +40,9 @@ int main(void){
   int cntCom, cntArg, i, j, childPid, pid, errno, status, exitValue;
   int pipefd[2];
   pipe(pipefd);
+
+  /* SIGINT init, need for interrupt programm */
+  signal(SIGINT, signal_callback_handler);
 
   while(1){
     /* set cmd to NULL for next loop pass */
