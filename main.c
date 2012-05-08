@@ -131,6 +131,7 @@ int main(void){
         close(pipefd[1]);
         /* begin time measure */
         cmd[i]->st_time = times(&cmd[i]->st_cpu);
+printf("start: %d\t", (int)(cmd[i]->st_cpu.tms_cutime));
 
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
@@ -148,6 +149,8 @@ int main(void){
         /* end time measure */
         if(cmd[i]->pid == (int)pid){
           cmd[i]->en_time = times(&cmd[i]->en_cpu);
+printf("end: %d\n", (int)(cmd[i]->en_cpu.tms_cutime));
+          break;
         }
       }
       if(errno == ECHILD){
@@ -157,7 +160,7 @@ int main(void){
     }
 
     for(i = 0; i < cntCom; i++){
-      printf("%s\tPID: %d\tTime: %f\n",cmd[i]->command,  cmd[i]->pid, (double)(cmd[i]->en_time - cmd[i]->st_time));
+      /*printf("%s\tPID:%d\tTime:%d\n",cmd[i]->command,  cmd[i]->pid, (int)(cmd[i]->en_time - cmd[i]->st_time));*/
     }
   }
 
