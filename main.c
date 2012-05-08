@@ -1,147 +1,169 @@
-/*--- main.c ---*/
-
+/*--- hu1.c ----------------------------------------------------------------*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <sys/times.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #define MAX_LINE     500
 #define MAX_COMMANDS  10
+#define MAX_ARGUMENTS 19
 
 
 /* struct to save command and aruments */
 typedef struct commands{
   int pid;
   char *command;
-  /*char *args;*/
-  char **argsArray;
-  int beginTime;
-  int endTime;
+  char **args;
+  struct tms st_cpu;
+  struct tms en_cpu;
   int exitStatus;
 }Commands;
 
 
 int main(void){
   char inputStr[MAX_LINE];
-  char *token = NULL;
-  char *tmpArg;
-  char **tmpArgArray;
-  Commands **cmd = NULL;
-  Commands **tmpCmd;
-  int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue, x;
+  char *token = NULL;      /* read tokens from stream and command */
+  char *tmpArg;            /* command could not overwrite by array allocate */
+  char *ptr;               /* remove \n from string */
+  Commands **cmd;
+  int cntCom, cntArg, i, j, childPid, pid, errno, status, exitValue;
   int pipefd[2];
   pipe(pipefd);
 
   while(1){
+    /* set cmd to NULL for next loop pass */
+    cmd = NULL;
     /* read input line, string must be 501 because of last
        null or \n entry, not sure about this point */
     printf("> ");
-    if(fgets(inputStr, 501, stdin) == NULL){
+    if(fgets(inputStr, MAX_LINE+1, stdin) == NULL){
       perror("error: input stream\n");
       return 1;
     }
-    if(strlen(inputStr) > 501){
+    if(strlen(inputStr) > MAX_LINE+1){
       perror("error: input string to long\n");
       return 1;
     }
 
-    /* split string in tokens and save in struct */
-    token = strtok(inputStr, ";");
+    /* create command array */
+    tmpArg = (char *)malloc(sizeof(char) * strlen(inputStr));
+    strcpy(tmpArg, inputStr);
+    token = strtok(tmpArg, ";");
     cntCom = 0;
     while(token != NULL){
-      /* limited to 10 commands */
-      if(cntCom < MAX_COMMANDS){
-        tmpCmd = (Commands **)malloc(sizeof(Commands)*(cntCom+1));
-        cnt1 = 0;
-        while(cnt1 < cntCom+1){
-          if(cmd != NULL){
-            tmpCmd[cnt1] = cmd[cnt1];
-          }else{
-            cmd = tmpCmd;
-          }
-          cnt1++;
-        }
-        cmd = tmpCmd;
-        cmd[cntCom] = (Commands *)malloc(sizeof(Commands));
-        cmd[cntCom]->command = token;
-        cntCom++;
-      }else{
-        perror("error: more than 10 commands\n");
-        return 1;
-      }
+      cntCom++;
       token = strtok(NULL, ";");
     }
+    cmd = (Commands **)malloc(sizeof(Commands *));
+    if(cmd == NULL){
+      perror("error: out of memory\n");
+      return 1;
+    }
+    for(i=0; i<cntCom; i++){
+      cmd[i] = (Commands *)malloc(sizeof(Commands));
+      if(cmd[i] == NULL){
+        perror("error: out of memory\n");
+        return 1;
+      }
+    }
+
+    /* check for max commands, max commands are 10 */
+    if(cntCom > MAX_COMMANDS+1){
+      perror("error: to much commands\n");
+      return 1;
+    }
+
+    /* split string in tokens and save in struct */
+    strcpy(tmpArg, inputStr);
+    token = strtok(inputStr, ";");
+    for(i=0; i<cntCom; i++){
+      if( (ptr = strchr(token, '\n')) != NULL){
+        *ptr = '\0';
+      }
+      cmd[i]->command = token;
+      token = strtok(NULL, ";");
+    }
+
     /* saves arguments in char array for each command */
-    for(cnt1=0; cnt1<cntCom; cnt1++){
-      if(cnt1 > 20){
+    for(i=0; i<cntCom; i++){
+      /* command can't be over written */
+      tmpArg = (char *) malloc(sizeof(char) * strlen(cmd[i]->command));
+      strcpy(tmpArg, cmd[i]->command);
+      /* count arguments */
+      cntArg = 0;
+      token = strtok(tmpArg, " ");
+      while(token != NULL){
+        cntArg++;
+        token = strtok(NULL, " ");
+      }
+      if((cntArg-1) > 20){
         perror("error: to much arguments\n");
         return 1;
       }
-      tmpArg = cmd[cnt1]->command;
-      /* get command without arguments */
-      token = strtok(tmpArg, " ");
-      if(token != NULL){
-        cmd[cnt1]->command = token;
-        /*printf("%s\t",cmd[cnt1]->command);*/
-        /* create new argument array and copy from old */
-        token = strtok(NULL, " ");
-        /*cmd[cnt1]->args = token;*/
-        cntArg = 0;
-        while(token != NULL){
-          tmpArgArray = (char **)malloc(sizeof(char *)*(cntArg+1));
-          if(cntArg == 0){
-            cmd[cnt1]->argsArray = tmpArgArray;
-            cmd[cnt1]->argsArray[cntArg] = token;
-            /*printf("%s\n",cmd[cnt1]->argsArray[cntArg]);*/
-          }else{
-            for(cnt2=0; cnt2<cntArg; cnt2++){
-              tmpArgArray[cnt2] = cmd[cnt1]->argsArray[cnt2];
-            }
-            tmpArgArray[cntArg] = token;
-            cmd[cnt1]->argsArray = tmpArgArray;
-          }
-          cntArg++;
-          token = strtok(NULL, " ");
+      /* create arguments array */
+      cmd[i]->args = (char **)malloc(sizeof(char *));
+      if(cmd[i]->args == NULL){
+        perror("error: out of memory\n");
+        return 1;
+      }
+      for(j=0; j<cntArg+1; j++){
+        cmd[i]->args[j] = (char *)malloc(sizeof(char));
+        if(cmd[i]->args == NULL){
+          perror("error: out of memory\n");
+          return 1;
         }
       }
 
-      if(strlen(cmd[cnt1]->command) > 21){
+      strcpy(tmpArg, cmd[i]->command);
+      token = strtok(tmpArg, " ");
+      cmd[i]->command = token;
+      /* first element MUST be the command */
+      for(j=0; j<cntArg; j++){
+        cmd[i]->args[j] = token;
+        token = strtok(NULL, " ");
+      }
+      /* last element MUST be a NULL */
+      cmd[i]->args[cntArg] = NULL;
+
+      if(strlen(cmd[i]->command) > 21){
         perror("error: command to long");
         return 1;
       }
     }
 
     for(i = 0; i < cntCom; i++){
-      printf("%s\n", cmd[i]->command);
+      /*printf("%s\n", cmd[i]->command);*/
       childPid = fork();
 
       if(childPid < 0){
         printf("Fork of %s failed", cmd[i]->command);
       }else if(childPid == 0){
         close(pipefd[0]);    /* close reading end in the child */
-
         dup2(pipefd[1], 1);  /* send stdout to the pipe */
-
         close(pipefd[1]);
+
+        /* begin time measure */
+        /*cmd[i]->st_time = times(&cmd[i]->st_cpu);*/
         /* exitValue is not 0 if the command can not be executed */
-        exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
+        exitValue = execvp(cmd[i]->command, cmd[i]->args);
         exit(exitValue);
-      }else{
+      }else{ /* Parent process */
         cmd[i]->pid = childPid;
-        /* Parent process */
-        printf("Process pid %d\n", getpid());
-        printf("Process pid %d\n", cmd[i]->pid);
+        /*printf("Process pid %d\n", getpid());
+        printf("Process pid %d\n", cmd[i]->pid);*/
       }
     }
     
     /* wait for all children */
     while((pid = waitpid(-1, &status,0))){
-      for(x = 0; x < cntCom; x++){
-        if(cmd[x]->pid == (int) pid){
-          cmd[x]->exitStatus = WEXITSTATUS(status);
+      for(i = 0; i < cntCom; i++){
+        if(cmd[i]->pid == (int) pid){
+          cmd[i]->exitStatus = WEXITSTATUS(status);
           break;
         }
       }
