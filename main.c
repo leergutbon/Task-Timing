@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
+#include <sys/time.h>
 
 #define MAX_LINE     500
 #define MAX_COMMANDS  10
@@ -18,8 +20,8 @@ typedef struct commands{
   char *command;
   /*char *args;*/
   char **argsArray;
-  int beginTime;
-  int endTime;
+  clock_t beginTime;
+  clock_t endTime;
 }Commands;
 
 
@@ -28,13 +30,15 @@ int main(void){
   char *token = NULL;
   char *tmpArg;
   char **tmpArgArray;
-  Commands **cmd = NULL;
+  Commands **cmd;
   Commands **tmpCmd;
   int cntCom, cnt1, cntArg, cnt2, i, childPid, pid, errno, status, exitValue;
   int pipefd[2];
   pipe(pipefd);
 
   while(1){
+    /* set cmd to NULL for next loop pass */
+    cmd = NULL;
     /* read input line, string must be 501 because of last
        null or \n entry, not sure about this point */
     printf("> ");
@@ -84,17 +88,16 @@ int main(void){
       token = strtok(tmpArg, " ");
       if(token != NULL){
         cmd[cnt1]->command = token;
-        /*printf("%s\t",cmd[cnt1]->command);*/
         /* create new argument array and copy from old */
         token = strtok(NULL, " ");
-        /*cmd[cnt1]->args = token;*/
         cntArg = 0;
+        /* every argument gets his array entry */
         while(token != NULL){
           tmpArgArray = (char **)malloc(sizeof(char *)*(cntArg+1));
+          /* first element is null */
           if(cntArg == 0){
             cmd[cnt1]->argsArray = tmpArgArray;
             cmd[cnt1]->argsArray[cntArg] = token;
-            /*printf("%s\n",cmd[cnt1]->argsArray[cntArg]);*/
           }else{
             for(cnt2=0; cnt2<cntArg; cnt2++){
               tmpArgArray[cnt2] = cmd[cnt1]->argsArray[cnt2];
@@ -114,7 +117,7 @@ int main(void){
     }
 
     for(i = 0; i < cntCom; i++){
-      printf("%s\n", cmd[i]->command);
+      /*printf("%s\n", cmd[i]->command);*/
       childPid = fork();
 
       if(childPid < 0){
@@ -125,19 +128,26 @@ int main(void){
         dup2(pipefd[1], 1);  /* send stdout to the pipe */
 
         close(pipefd[1]);
+        /* begin time measure */
+        cmd[i]->beginTime = times(NULL);
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->argsArray);
         exit(exitValue);
-      }else{
+      }else{ /* Parent process */
         cmd[i]->pid = childPid;
-        /* Parent process */
-        printf("Process pid %d\n", getpid());
-        printf("Process pid %d\n", cmd[i]->pid);
+        /*printf("Process pid %d\n", getpid());
+        printf("Process pid %d\n", cmd[i]->pid);*/
       }
     }
     
     /* wait for all children */
     while((pid = waitpid(-1, &status,0))){
+      for(i=0; i<cntCom; i++){
+        /* end time measure */
+        if(cmd[i]->pid == (int)pid){
+          cmd[i]->endTime = times(NULL);
+        }
+      }
       if(errno == ECHILD){
         break;
       }
@@ -145,8 +155,7 @@ int main(void){
     }
 
     for(i = 0; i < cntCom; i++){
-      
-      printf("%s : PID: %d\n",cmd[i]->command,  cmd[i]->pid);
+      printf("%s\tPID: %d\tTime: %f\n",cmd[i]->command,  cmd[i]->pid, (difftime(cmd[i]->endTime, cmd[i]->beginTime)));
     }
   }
 
