@@ -42,8 +42,6 @@ int main(void){
 
   /* SIGINT init, need for interrupt programm */
   signal(SIGINT, signal_callback_handler);
-  /* get ticks per second */
-  sysconf(_SC_CLK_TCK);
 
   while(1){
     /* set cmd to NULL for next loop pass */
@@ -164,9 +162,10 @@ int main(void){
     }
     
     /* wait for all children */
-    while((pid = waitpid(-1, &status, WNOHANG)) != -1){
+    /*while((pid = waitpid(-1, &status, WNOHANG)) != -1){*/
+    while((pid = wait(&status)) != -1){
       for(i = 0; i < cntCom; i++){
-        if(cmd[i]->pid == (int) pid){
+        if(cmd[i]->pid == (int)pid){
           cmd[i]->exitStatus = WEXITSTATUS(status);
           times(&cmd[i]->en_cpu);
           break;
@@ -180,10 +179,14 @@ int main(void){
       if (cmd[i]->exitStatus != 0){
         printf("%s: [execution error]\n", cmd[i]->command);
       }else{
-        printf("%s: user time = %f\n", cmd[i]->command, (double)(cmd[i]->en_cpu.tms_cutime - cmd[i]->st_cpu.tms_cutime));
+        /*sysconf(_SC_CLK_TCK);*/
+        printf("%s: user time = %d\n", cmd[i]->command,
+              (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime));
+              /*(int)((double)cmd[i]->en_cpu.tms_cutime/(double)sysconf(_SC_CLK_TCK) - (double)cmd[i]->st_cpu.tms_cutime/(double)sysconf(_SC_CLK_TCK)));*/
+        j += (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime);
       }
     }
-    printf("sum of user times = TIME\n");
+    printf("sum of user times = %d\n", j);
   }
 
   return 0;
