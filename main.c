@@ -33,13 +33,12 @@ void signal_callback_handler(int signum){
 
 int main(void){
   char inputStr[MAX_LINE];
-  char *token = NULL;      /* read tokens from stream and command */
-  char *tmpArg;            /* command could not overwrite by array allocate */
-  char *ptr;               /* remove \n from string */
+  char *token = NULL;       /* read tokens from stream and command */
+  char *tmpArg;             /* command could not overwrite by array allocate */
+  char *ptr;                /* remove \n from string */
   Commands **cmd;
-  int cntCom, cntArg, i, j, childPid, pid, errno, status, exitValue;
-  int pipefd[2];
-  pipe(pipefd);
+  int cntCom, cntArg, i, j; /* counter variables */
+  int childPid, pid, errno, status, exitValue;
 
   /* SIGINT init, need for interrupt programm */
   signal(SIGINT, signal_callback_handler);
@@ -149,16 +148,11 @@ int main(void){
 
     /* execute each proces */
     for(i = 0; i < cntCom; i++){
-      /*printf("%s\n", cmd[i]->command);*/
       childPid = fork();
 
       if(childPid < 0){
         printf("Fork of %s failed", cmd[i]->command);
       }else if(childPid == 0){
-        close(pipefd[0]);    /* close reading end in the child */
-        dup2(pipefd[1], 1);  /* send stdout to the pipe */
-        close(pipefd[1]);
-
         /* begin time measure */
         times(&cmd[i]->st_cpu);
         /* exitValue is not 0 if the command can not be executed */
@@ -166,23 +160,17 @@ int main(void){
         exit(exitValue);
       }else{ /* Parent process */
         cmd[i]->pid = childPid;
-        /*printf("Process pid %d\n", getpid());
-        printf("Process pid %d\n", cmd[i]->pid);*/
       }
     }
     
     /* wait for all children */
-    while((pid = waitpid(-1, &status,0))){
+    while((pid = waitpid(-1, &status, WNOHANG)) != -1){
       for(i = 0; i < cntCom; i++){
         if(cmd[i]->pid == (int) pid){
           cmd[i]->exitStatus = WEXITSTATUS(status);
           times(&cmd[i]->en_cpu);
           break;
         }
-      }
-
-      if(errno == ECHILD){
-        break;
       }
       /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
     }
