@@ -51,7 +51,7 @@ int main(void){
     /* read input line, string must be 501 because of last
        null or \n entry, not sure about this point */
     printf("> ");
-    if(fgets(inputStr, MAX_LINE+1, stdin) == NULL){
+    if(fgets(inputStr, MAX_LINE+2, stdin) == NULL){
       perror("error: input stream\n");
       return 1;
     }
