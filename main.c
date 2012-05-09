@@ -24,11 +24,9 @@ typedef struct commands{
   int exitStatus;
 }Commands;
 
+
 /* signal handler */
-void signal_callback_handler(int signum){
-  printf("\nCaught signal %d\n",signum);
-  exit(signum);
-}
+void signal_callback_handler(int signum){ }
 
 
 int main(void){
@@ -174,19 +172,25 @@ int main(void){
       /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
     }
 
+    /* only for good look */
+    printf("\n");
+
     j = 0;
     for(i = 0; i < cntCom; i++){
       if (cmd[i]->exitStatus != 0){
         printf("%s: [execution error]\n", cmd[i]->command);
       }else{
         /*sysconf(_SC_CLK_TCK);*/
-        printf("%s: user time = %d\n", cmd[i]->command,
-              (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime));
-              /*(int)((double)cmd[i]->en_cpu.tms_cutime/(double)sysconf(_SC_CLK_TCK) - (double)cmd[i]->st_cpu.tms_cutime/(double)sysconf(_SC_CLK_TCK)));*/
+        printf("%s: user time = %d\n", cmd[i]->command, (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime));
         j += (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime);
       }
     }
     printf("sum of user times = %d\n", j);
+
+    /* if interrupt triggered with CTRL C, then errno is EINTR */
+    if(errno == EINTR){
+      exit(EINTR);
+    }
   }
 
   return 0;
