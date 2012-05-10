@@ -4,15 +4,17 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <sys/times.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 
 #define MAX_LINE     500
 #define MAX_COMMANDS  10
 #define MAX_ARGUMENTS 19
 
+#define FALSE 0
+#define TRUE 1
 
 /* struct to save command and aruments */
 typedef struct commands{
@@ -22,6 +24,7 @@ typedef struct commands{
   struct tms st_cpu;
   struct tms en_cpu;
   int exitStatus;
+  int hasEnded;
 }Commands;
 
 
@@ -41,7 +44,7 @@ int main(void){
   /* SIGINT init, need for interrupt programm */
   signal(SIGINT, signal_callback_handler);
 
-  while(1){
+  while(TRUE){
     /* set cmd to NULL for next loop pass */
     cmd = NULL;
     /* read input line, string must be 501 because of last
@@ -144,6 +147,7 @@ int main(void){
 
     /* execute each proces */
     for(i = 0; i < cntCom; i++){
+      cmd[i]->hasEnded = FALSE;
       childPid = fork();
 
       if(childPid < 0){
@@ -166,11 +170,24 @@ int main(void){
         if(cmd[i]->pid == (int)pid){
           cmd[i]->exitStatus = WEXITSTATUS(status);
           times(&cmd[i]->en_cpu);
+          cmd[i]->hasEnded = TRUE;
           break;
         }
       }
       /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
     }
+
+    /* if interrupt triggered with CTRL C, then errno is EINTR */
+    if(errno == EINTR){
+      /* check if process hasn't already terminated before SIGINT */
+      for(i = 0; i < cntCom; i++){
+        if(cmd[i]->hasEnded == FALSE){
+          times(&cmd[i]->en_cpu);
+          cmd[i]->hasEnded = TRUE;
+        }
+      }
+    }
+    
 
     /* only for good look */
     printf("\n");
@@ -187,10 +204,7 @@ int main(void){
     }
     printf("sum of user times = %d\n", j);
 
-    /* if interrupt triggered with CTRL C, then errno is EINTR */
-    if(errno == EINTR){
-      exit(EINTR);
-    }
+    
   }
 
   return 0;
