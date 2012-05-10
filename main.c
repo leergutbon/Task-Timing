@@ -24,12 +24,12 @@ typedef struct commands{
   struct tms st_cpu;
   struct tms en_cpu;
   int exitStatus;
-  int hasEnded;
 }Commands;
 
 
 /* signal handler */
-void signal_callback_handler(int signum){ }
+void signal_callback_handler(int signum){ 
+}
 
 
 int main(void){
@@ -147,7 +147,6 @@ int main(void){
 
     /* execute each proces */
     for(i = 0; i < cntCom; i++){
-      cmd[i]->hasEnded = FALSE;
       childPid = fork();
 
       if(childPid < 0){
@@ -170,21 +169,24 @@ int main(void){
         if(cmd[i]->pid == (int)pid){
           cmd[i]->exitStatus = WEXITSTATUS(status);
           times(&cmd[i]->en_cpu);
-          cmd[i]->hasEnded = TRUE;
           break;
         }
       }
       /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
     }
 
-    /* if interrupt triggered with CTRL C, then errno is EINTR */
+
     if(errno == EINTR){
-      /* check if process hasn't already terminated before SIGINT */
-      for(i = 0; i < cntCom; i++){
-        if(cmd[i]->hasEnded == FALSE){
-          times(&cmd[i]->en_cpu);
-          cmd[i]->hasEnded = TRUE;
+      /* here are the non terminated processes */
+      while((pid = wait(&status)) != -1){
+        for(i = 0; i < cntCom; i++){
+          if(pid == cmd[i]->pid){
+            times(&cmd[i]->en_cpu);
+            break;
+          }
         }
+        
+      /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
       }
     }
     
