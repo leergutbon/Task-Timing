@@ -21,8 +21,12 @@ typedef struct commands{
   int pid;
   char *command;
   char **args;
+  /* only linux systems */
   struct tms st_cpu;
   struct tms en_cpu;
+  /* only eos32 systems */
+  /*struct tbuffer st_cpu;
+  tbuffer en_cpu;*/
   int exitStatus;
 }Commands;
 
@@ -47,6 +51,7 @@ int main(void){
   while(TRUE){
     /* set cmd to NULL for next loop pass */
     cmd = NULL;
+
     /* read input line, string must be 501 because of last
        null or \n entry, not sure about this point */
     printf("> ");
@@ -176,6 +181,11 @@ int main(void){
     }
 
 
+    /* only for good look */
+    printf("\n");
+    
+
+    /* comes to this point by an interrupt with CTRL C */
     if(errno == EINTR){
       /* here are the non terminated processes */
       while((pid = wait(&status)) != -1){
@@ -185,30 +195,35 @@ int main(void){
             break;
           }
         }
-        
       /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
       }
-    }
-    
+      
+      j = 0;
+      for(i = 0; i < cntCom; i++){
+        if (cmd[i]->exitStatus != 0){
+          printf("%s: [execution error]\n", cmd[i]->command);
+        }else{
+          printf("%s: user time = %d\n", cmd[i]->command, (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime));
+          j += (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime);
+        }
+      }
+      printf("sum of user times = %d\n", j);
 
-    /* only for good look */
-    printf("\n");
+      return 0;
+    }
 
     j = 0;
     for(i = 0; i < cntCom; i++){
       if (cmd[i]->exitStatus != 0){
         printf("%s: [execution error]\n", cmd[i]->command);
       }else{
-        /*sysconf(_SC_CLK_TCK);*/
         printf("%s: user time = %d\n", cmd[i]->command, (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime));
         j += (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime);
       }
     }
     printf("sum of user times = %d\n", j);
-
-    
   }
 
-  return 0;
+  return 0; 
 }
 
