@@ -22,6 +22,16 @@ int finishedPrograms = 0;
 
 /* struct to save command and arguments */
 
+typedef struct commands{
+  int pid;
+  char *command;
+  char **args;
+  clock_t passedTime
+  /* only eos32 systems */
+  /*struct tbuffer st_cpu;
+  tbuffer en_cpu;*/
+  int exitStatus;
+}Commands;
 
 
 /* signal handler */
@@ -47,6 +57,7 @@ int main(void){
     finishedPrograms = 0;
     /* set cmd to NULL for next loop pass */
     cmd = NULL;
+
     /* read input line, string must be 501 because of last
        null or \n entry, not sure about this point */
     printf("> ");
@@ -195,6 +206,11 @@ int main(void){
     }
 
 
+    /* only for good look */
+    printf("\n");
+    
+
+    /* comes to this point by an interrupt with CTRL C */
     if(errno == EINTR){
       /* here are the non terminated processes */
       while((pid = wait(&status)) != -1){
@@ -214,10 +230,8 @@ int main(void){
 
     printSummary(cmd, cntCom);
 
-    
   }
-
-  return 0;
+  return 0; 
 }
 
 
@@ -241,8 +255,7 @@ void printSummary(Commands **cmd, int numberOfCommands){
 }
 
 
-char *trimwhitespace(char *str)
-{
+char *trimwhitespace(char *str){
   char *end;
 
   /* Trim leading space */
