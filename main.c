@@ -20,18 +20,6 @@
 
 int finishedPrograms = 0;
 
-/* struct to save command and arguments */
-
-typedef struct commands{
-  int pid;
-  char *command;
-  char **args;
-  clock_t passedTime
-  /* only eos32 systems */
-  /*struct tbuffer st_cpu;
-  tbuffer en_cpu;*/
-  int exitStatus;
-}Commands;
 
 
 /* signal handler */
@@ -116,11 +104,6 @@ int main(void){
       }
       cmd[i]->command = token;
       token = strtok(NULL, ";");
-    }
-
-    printf("%d\n", cntCom);
-    for(i = 0; i < cntCom; i++){
-      printf("%s\n", cmd[i]->command);
     }
 
     /* saves arguments in char array for each command */
