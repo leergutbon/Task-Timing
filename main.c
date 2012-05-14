@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <sys/times.h>
 #include <sys/wait.h>
+#include <ctype.h>
+#include "main.h"
 
 #define MAX_LINE     500
 #define MAX_COMMANDS  10
@@ -16,15 +18,10 @@
 #define FALSE 0
 #define TRUE 1
 
-/* struct to save command and aruments */
-typedef struct commands{
-  int pid;
-  char *command;
-  char **args;
-  struct tms st_cpu;
-  struct tms en_cpu;
-  int exitStatus;
-}Commands;
+int finishedPrograms = 0;
+
+/* struct to save command and arguments */
+
 
 
 /* signal handler */
@@ -38,6 +35,8 @@ int main(void){
   char *tmpArg;             /* command could not overwrite by array allocate */
   char *ptr;                /* remove \n from string */
   Commands **cmd;
+  struct tms st_cpu;
+  struct tms en_cpu;
   int cntCom, cntArg, i, j; /* counter variables */
   int childPid, pid, errno, status, exitValue;
 
@@ -45,6 +44,7 @@ int main(void){
   signal(SIGINT, signal_callback_handler);
 
   while(TRUE){
+    finishedPrograms = 0;
     /* set cmd to NULL for next loop pass */
     cmd = NULL;
     /* read input line, string must be 501 because of last
@@ -65,8 +65,17 @@ int main(void){
     token = strtok(tmpArg, ";");
     cntCom = 0;
     while(token != NULL){
-      cntCom++;
+      token = trimwhitespace(token);
+      if(strlen(token) == 0){
+        token = strtok(NULL, ";");
+        continue;
+      }
       token = strtok(NULL, ";");
+      cntCom++;
+      
+    }
+    if(cntCom == 0){
+      continue;
     }
     cmd = (Commands **)malloc(sizeof(Commands *));
     if(cmd == NULL){
@@ -96,6 +105,11 @@ int main(void){
       }
       cmd[i]->command = token;
       token = strtok(NULL, ";");
+    }
+
+    printf("%d\n", cntCom);
+    for(i = 0; i < cntCom; i++){
+      printf("%s\n", cmd[i]->command);
     }
 
     /* saves arguments in char array for each command */
@@ -145,15 +159,14 @@ int main(void){
       }
     }
 
-    /* execute each proces */
+    /* execute each process */
     for(i = 0; i < cntCom; i++){
       childPid = fork();
 
       if(childPid < 0){
+        finishedPrograms = finishedPrograms + 1;
         printf("Fork of %s failed", cmd[i]->command);
       }else if(childPid == 0){
-        /* begin time measure */
-        times(&cmd[i]->st_cpu);
         /* exitValue is not 0 if the command can not be executed */
         exitValue = execvp(cmd[i]->command, cmd[i]->args);
         exit(exitValue);
@@ -163,52 +176,89 @@ int main(void){
     }
     
     /* wait for all children */
-    /*while((pid = waitpid(-1, &status, WNOHANG)) != -1){*/
-    while((pid = wait(&status)) != -1){
+    while(TRUE){
+      times(&st_cpu);
+      pid = wait(&status);
+      times(&en_cpu);
       for(i = 0; i < cntCom; i++){
         if(cmd[i]->pid == (int)pid){
           cmd[i]->exitStatus = WEXITSTATUS(status);
-          times(&cmd[i]->en_cpu);
+          cmd[i]->passedTime = en_cpu.tms_cutime - st_cpu.tms_cutime;
           break;
         }
       }
-      /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
+      finishedPrograms = finishedPrograms + 1;
+      if(finishedPrograms >= cntCom){
+        break;
+      }
+      
     }
 
 
     if(errno == EINTR){
       /* here are the non terminated processes */
       while((pid = wait(&status)) != -1){
+        finishedPrograms = finishedPrograms + 1;
         for(i = 0; i < cntCom; i++){
           if(pid == cmd[i]->pid){
-            times(&cmd[i]->en_cpu);
+            cmd[i]->exitStatus = -1;
             break;
           }
-        }
-        
-      /*printf("Exit status of %d was %d \n", (int)pid, WEXITSTATUS(status));*/
+        } 
       }
+
+      printSummary(cmd, cntCom);
+      exit(0);
     }
     
 
-    /* only for good look */
-    printf("\n");
-
-    j = 0;
-    for(i = 0; i < cntCom; i++){
-      if (cmd[i]->exitStatus != 0){
-        printf("%s: [execution error]\n", cmd[i]->command);
-      }else{
-        /*sysconf(_SC_CLK_TCK);*/
-        printf("%s: user time = %d\n", cmd[i]->command, (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime));
-        j += (int)((double)cmd[i]->en_cpu.tms_cutime - (double)cmd[i]->st_cpu.tms_cutime);
-      }
-    }
-    printf("sum of user times = %d\n", j);
+    printSummary(cmd, cntCom);
 
     
   }
 
   return 0;
 }
+
+
+void printSummary(Commands **cmd, int numberOfCommands){
+  int summe, i;
+  /* only for good look */
+  printf("\n\n");
+
+  summe = 0;
+  for(i = 0; i < numberOfCommands; i++){
+    if (cmd[i]->exitStatus != 0){
+      printf("%s: [execution error]\n", cmd[i]->command);
+    }else{
+      /*sysconf(_SC_CLK_TCK);*/
+      printf("%s: user time = %d\n", cmd[i]->command, (int)(cmd[i]->passedTime));
+      summe += cmd[i]->passedTime;
+    }
+  }
+  summe = (int)(summe);
+  printf("sum of user times = %d\n", summe);
+}
+
+
+char *trimwhitespace(char *str)
+{
+  char *end;
+
+  /* Trim leading space */
+  while(isspace(*str)) str++;
+
+  if(*str == 0)  /* All spaces? */
+    return str;
+
+  /* Trim trailing space */
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+
+  /* Write new null terminator */
+  *(end+1) = 0;
+
+  return str;
+}
+
 
