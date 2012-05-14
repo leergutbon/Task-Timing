@@ -22,6 +22,7 @@ int finishedPrograms = 0;
 
 
 
+
 /* signal handler */
 void signal_callback_handler(int signum){ 
 }
@@ -255,6 +256,7 @@ char *trimwhitespace(char *str){
   *(end+1) = 0;
 
   return str;
+
 }
 
 
