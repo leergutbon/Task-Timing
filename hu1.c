@@ -93,6 +93,7 @@ int main(void){
         perror("error: out of memory\n");
         return 1;
       }
+      /* set exitStatus initially to "not finished correctly" */
       cmd[i]->exitStatus = -1;
     }
 
@@ -183,7 +184,6 @@ int main(void){
       times(&en_cpu);
       for(i = 0; i < cntCom; i++){
         if(cmd[i]->pid == (int)pid){
-          printf("PID: %d\n", cmd[i]->pid);
           cmd[i]->exitStatus = 0;
           cmd[i]->passedTime = en_cpu.child_user_time - st_cpu.child_user_time;
           break;
@@ -203,7 +203,6 @@ int main(void){
 
     /* comes to this point by an interrupt with CTRL C */
     if(errno == EINTR){
-      printf("hier\n");
       /* here are the non terminated processes */
       while((pid = wait(&status)) != -1){
         finishedPrograms = finishedPrograms + 1;
