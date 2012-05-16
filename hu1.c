@@ -1,4 +1,6 @@
 /*--- hu1.c ----------------------------------------------------------------*/
+/* Hermann Sutter, Florian Thomas */
+
 #include <eos32sys.h>
 #include <eos32lib.h>
 #include <stdlib.h>
@@ -17,6 +19,7 @@
 #define TRUE 1
 
 
+/* count the finished Programs */
 int finishedPrograms = 0;
 
 
@@ -33,8 +36,8 @@ int main(void){
   char *tmpArg;             /* command could not overwrite by array allocate */
   char *ptr;                /* remove \n from string */
   Commands **cmd;
-  struct tbuffer st_cpu;
-  struct tbuffer en_cpu;
+  struct tbuffer st_cpu;    /* start time */
+  struct tbuffer en_cpu;    /* end time */
   int cntCom, cntArg, i, j; /* counter variables */
   int childPid, pid, errno, status, exitValue;
 
@@ -42,9 +45,9 @@ int main(void){
   signal(SIGINT, signal_callback_handler);
 
   while(TRUE){
-    finishedPrograms = 0;
-    /* set cmd to NULL for next loop pass */
+    /* reset cmd and finishedPrograms counter */
     cmd = NULL;
+    finishedPrograms = 0;
 
     /* read input line, string must be 501 because of last
        null or \n entry, not sure about this point */
@@ -64,6 +67,7 @@ int main(void){
     token = strtok(tmpArg, ";");
     cntCom = 0;
     while(token != NULL){
+      /* check if token is empty */
       token = trimwhitespace(token);
       if(strlen(token) == 0){
         token = strtok(NULL, ";");
@@ -73,6 +77,8 @@ int main(void){
       cntCom++;
       
     }
+
+    /* if no valid command was entered continue at the next prompt */
     if(cntCom == 0){
       continue;
     }
@@ -87,6 +93,7 @@ int main(void){
         perror("error: out of memory\n");
         return 1;
       }
+      cmd[i]->exitStatus = -1;
     }
 
     /* check for max commands, max commands are 10 */
@@ -153,7 +160,7 @@ int main(void){
       }
     }
 
-    /* execute each process */
+    /* fork each process */
     for(i = 0; i < cntCom; i++){
       childPid = fork();
 
@@ -176,6 +183,7 @@ int main(void){
       times(&en_cpu);
       for(i = 0; i < cntCom; i++){
         if(cmd[i]->pid == (int)pid){
+          printf("PID: %d\n", cmd[i]->pid);
           cmd[i]->exitStatus = 0;
           cmd[i]->passedTime = en_cpu.child_user_time - st_cpu.child_user_time;
           break;
@@ -195,6 +203,7 @@ int main(void){
 
     /* comes to this point by an interrupt with CTRL C */
     if(errno == EINTR){
+      printf("hier\n");
       /* here are the non terminated processes */
       while((pid = wait(&status)) != -1){
         finishedPrograms = finishedPrograms + 1;
@@ -217,7 +226,7 @@ int main(void){
   return 0; 
 }
 
-
+/* prints the summary */
 void printSummary(Commands **cmd, int numberOfCommands){
   int summe, i;
   /* only for good look */
@@ -237,7 +246,9 @@ void printSummary(Commands **cmd, int numberOfCommands){
   printf("sum of user times = %d\n", summe);
 }
 
-
+/* deletes whitespace before and after a given string */
+/* this function was taken from 
+http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way */
 char *trimwhitespace(char *str){
   char *end;
 
